@@ -1200,3 +1200,7 @@ plugins:
 #     switch-project: true
 #     switch-preview-model: true
 # antigravity-credits moved to oauth.providers.antigravity.antigravity-credits.
+
+# Poll Claude/Codex quota every 10 minutes (also enabled by reset-soonest routing).
+quota-probe:
+  enabled: false
