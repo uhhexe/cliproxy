@@ -169,7 +169,7 @@ Proxy (`uhhexe/cliproxy`):
   - Tier: build
 
 ## Stage 3 — running on Cody's Mac
-- [ ] 3.1 Research: can Easy CLI Proxy run our core?
+- [x] 3.1 Research: can Easy CLI Proxy run our core?
   - Where: `uhhexe/easycliproxy` `src-tauri/src/app_update.rs` (custom download mirrors,
     `VersionDownloadSource::Custom`), its config writer (does it regenerate `config.yaml` from
     `config.toml` on start, and does it reject an unknown `routing-strategy`?).
@@ -209,4 +209,18 @@ Proxy (`uhhexe/cliproxy`):
   `-uhh` after an app update — fallback: 3.1b (point the app's default mirror at the fork).
 
 ## Stage 3 findings
-(filled in by 3.1)
+(3.1, 2026-10-05, read of uhhexe/easycliproxy @ b48128a)
+- Custom download mirrors are URL *prefixes* in front of the hard-coded
+  `github.com/router-for-me/CLIProxyAPI/releases/...` URLs (`main.rs:102-105`, `version_source_url`
+  `main.rs:735`), so no mirror setting can fetch from `uhhexe/cliproxy`. Mirror route rejected.
+- The app runs whatever binary sits at `~/Library/Application Support/com.cpa.gui/cpa-core/cli-proxy-api`;
+  no core auto-update path was found. Install = back up, replace that binary with our build, restart core.
+- `config.yaml` is only patched surgically (`core_config/yaml.rs` `patch_existing_core_config`), and
+  `routing.strategy` is written only when the strategy is changed in the app's UI
+  (`core_config/commands.rs:470`). So `routing.strategy: reset-soonest` and
+  `management.panel-github-repository` / `disable-auto-update-panel` set by hand survive restarts.
+- The app's UI validator only allows round-robin / weighted-round-robin / fill-first
+  (`core_config/settings.rs:158`). Changing strategy in the app's UI would overwrite reset-soonest.
+  Tripwire for 3.1b (small easycliproxy patch: add reset-soonest to the validator + its dropdown).
+- Tripwire: if the app's "update core" action is ever used it pulls upstream router-for-me and our
+  `-uhh` version disappears from `cli-proxy-api -h`.
