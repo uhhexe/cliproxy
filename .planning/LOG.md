@@ -1,2 +1,3 @@
 # LOG
 - 2026-10-05 — Forked CLIProxyAPI → uhhexe/cliproxy, Management Center → uhhexe/cliproxy-dashboard, EasyCLIProxyAPI → uhhexe/easycliproxy. Gap-mapped against Theo's Quota page; phase 01 planned.
+- 2026-10-05 — Built by Codex, reviewed by Claude: uhhexe/cliproxy#1 #2, uhhexe/cliproxy-dashboard#1 #2 merged. Installed 8.0.15-uhh.2 into Easy CLI Proxy (backup: ~/Library/Application Support/com.cpa.gui.backup-20261005). Live config: routing.strategy-override reset-soonest, disable-auto-update-panel true. Probe reads all 4 credentials (Claude incl. Fable 5); requests verified going to the Codex Pro credential resetting soonest, exhausted free one skipped.

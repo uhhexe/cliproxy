@@ -66,7 +66,7 @@ Proxy (`uhhexe/cliproxy`):
   `go build -o /tmp/cpa-test ./cmd/server`.
 
 ## Stage 1 — the page looks like Theo's (repo: uhhexe/cliproxy-dashboard)
-- [ ] 1.1 Masked credential names + "Show emails" toggle
+- [x] 1.1 Masked credential names + "Show emails" toggle
   - Where: `utils/quota/identity.ts` (new `maskCredentialName`), `features/quota/uiState.ts`
     (`showEmails`, default false), `QuotaHeader.tsx` (toggle button left of Refresh),
     `QuotaCard.tsx`, `QuotaTimeline.tsx`, 4 locale files, new `tests/quotaMaskName.test.ts`.
@@ -76,7 +76,7 @@ Proxy (`uhhexe/cliproxy`):
     (unchanged) and a toggle-on case (raw name).
   - Fence: touches only the files listed; no change to how names are sent to the API.
   - Tier: build
-- [ ] 1.2 Auto-load quota for every credential (not just the visible page)
+- [x] 1.2 Auto-load quota for every credential (not just the visible page)
   - Where: new `features/quota/useQuotaAutoLoadAll.ts` modeled on `useDevinQuotaAutoLoad.ts`,
     calling `useQuotaBatchLoader.loadQuota`; mount in `QuotaPage.tsx`; Refresh reloads all.
     Concurrency cap 4, skip entries loaded < 60 s ago.
@@ -84,7 +84,7 @@ Proxy (`uhhexe/cliproxy`):
     fake loader: 10 entries → 10 loads, never > 4 in flight, second call within 60 s → 0 loads.
   - Fence: no change to provider fetchers or the api-call client.
   - Tier: build
-- [ ] 1.3 Provider roll-up cards
+- [x] 1.3 Provider roll-up cards
   - Where: new pure `features/quota/rollup.ts` (`buildProviderRollups(entries, quotaByType)` →
     per provider: headline label, sum of remaining %, N×100 cap, per-credential segments with
     level, soonest reset instant, optional secondary line), new
@@ -98,7 +98,7 @@ Proxy (`uhhexe/cliproxy`):
     reset = earliest instant; Codex 17/0/0 of 3 → "17% of 300%"; xAI unknown → `--` of 100%.
   - Fence: reuse `QuotaMeter` thresholds + `formatInstantShort`; no new colour tokens.
   - Tier: build
-- [ ] 1.4 Ledger view + view selector
+- [x] 1.4 Ledger view + view selector
   - Where: `constants.ts` (`QUOTA_VIEW_MODES = ['ledger','cards']`), `uiState.ts` (`viewMode`,
     default `ledger`), new `components/QuotaLedger.tsx` + `.module.scss`: one section per
     provider ("Claude 5" header), one row per credential — masked name + plan label on the
@@ -109,7 +109,7 @@ Proxy (`uhhexe/cliproxy`):
     the cards grid when `viewMode='cards'`.
   - Fence: provider Body components untouched except exporting their row builders if needed.
   - Tier: build
-- [ ] 1.5 Reset text polish + sidebar memory
+- [x] 1.5 Reset text polish + sidebar memory
   - Where: `QuotaResetLabel.tsx` → "No reset pending" when `buildResetDisplay` is null;
     `formatInstantShort` → `MM/DD, HH:mm`; `MainLayout.tsx` collapse state persisted in
     localStorage (try/catch); locale keys.
@@ -117,7 +117,7 @@ Proxy (`uhhexe/cliproxy`):
     for the null → "No reset pending" path.
   - Fence: no other layout change.
   - Tier: build
-- [ ] 1.6 Release workflow publishes `management.html` from the fork
+- [ ] 1.6 (deferred — install is a local build; releases only needed for other machines) Release workflow publishes `management.html` from the fork
   - Where: `.github/workflows/release.yml` already builds and renames; confirm it runs on the
     fork; tag `v1.25.3-uhh.1`.
   - Verify: `gh release view v1.25.3-uhh.1 -R uhhexe/cliproxy-dashboard --json assets -q '.assets[].name'`
@@ -152,7 +152,7 @@ Proxy (`uhhexe/cliproxy`):
   - Fence: never more than one in-flight probe per credential; never probes when the strategy
     is not reset-soonest and the flag is off; no new external dependency.
   - Tier: build
-- [ ] 2.3 `ResetSoonestSelector` + registration
+- [x] 2.3 `ResetSoonestSelector` + registration
   - Go half complete: selector, strategy registration, tests and server build pass. Dashboard half remains with the dashboard lane.
   - Where: `selector.go` (new type; start from `getSelectorAvailableAuths`, drop
     `Exhausted` creds, sort known ones by the soonest `ResetAt` among windows with quota left —
@@ -180,11 +180,11 @@ Proxy (`uhhexe/cliproxy`):
   - Fence: read only. If the app cannot do it, the fallback is a small `easycliproxy` change
     (strategy list + default mirror) — planned as 3.1b, built only after this answer.
   - Tier: research
-- [ ] 3.2 Release the proxy fork
+- [ ] 3.2 (deferred, same reason) Release the proxy fork
   - Where: `.github/workflows/release.yaml` on the fork; tag `v8.0.15-uhh.1`.
   - Verify: `gh release view v8.0.15-uhh.1 -R uhhexe/cliproxy` lists the darwin_aarch64 tarball.
   - Tier: build
-- [ ] 3.3 Install + cold press (Claude, never Cody)
+- [x] 3.3 Install + cold press (Claude, never Cody)
   - Back up `~/Library/Application Support/com.cpa.gui/` (config.toml, cpa-core/config.yaml,
     current binary) to a dated folder first. Point the app at the fork per 3.1, set
     `management.panel-github-repository: uhhexe/cliproxy-dashboard` and routing
