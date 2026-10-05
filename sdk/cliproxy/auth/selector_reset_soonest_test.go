@@ -95,3 +95,24 @@ func TestResetSoonestWebsocketPreference(t *testing.T) {
 		t.Fatalf("exhausted websocket credential was selected: %+v, %v", got, err)
 	}
 }
+
+func TestResetSoonestFableExhaustion(t *testing.T) {
+	now := time.Now()
+	makeAuth := func(id string, reset time.Time, used string) *Auth {
+		a := &Auth{ID: id, Provider: "claude"}
+		h := http.Header{}
+		h.Set("Anthropic-Ratelimit-Unified-5h-Utilization", "0.5")
+		h.Set("Anthropic-Ratelimit-Unified-5h-Reset", strconv.FormatInt(reset.Unix(), 10))
+		h.Set("Anthropic-Ratelimit-Unified-7d_fable-Utilization", used)
+		h.Set("Anthropic-Ratelimit-Unified-7d_fable-Reset", strconv.FormatInt(now.Add(24*time.Hour).Unix(), 10))
+		a.Quota.ObserveResponseHeadersForProvider("claude", h, now)
+		return a
+	}
+	a, b := makeAuth("a", now.Add(time.Hour), "1"), makeAuth("b", now.Add(2*time.Hour), "0.25")
+	for _, tt := range []struct{ model, want string }{{"claude-fable-5", "b"}, {"claude-sonnet-5", "a"}} {
+		got, err := (&ResetSoonestSelector{}).Pick(context.Background(), "claude", tt.model, cliproxyexecutor.Options{}, []*Auth{a, b})
+		if err != nil || got == nil || got.ID != tt.want {
+			t.Fatalf("model %s: got %+v, %v; want %s", tt.model, got, err, tt.want)
+		}
+	}
+}

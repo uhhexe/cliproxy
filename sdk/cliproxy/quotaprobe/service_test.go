@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -97,5 +98,48 @@ func TestProbeDisabled(t *testing.T) {
 	s.Run(ctx)
 	if m.calls.Load() != 0 {
 		t.Fatal("disabled prober made request")
+	}
+}
+
+func TestDecodeClaudeFableLimits(t *testing.T) {
+	reset := time.Now().Add(time.Hour).Truncate(time.Second)
+	limit := func(name, kind string, percent int, active bool) string {
+		return fmt.Sprintf(`{"kind":%q,"percent":%d,"resets_at":%q,"is_active":%t,"scope":{"model":{"display_name":%q}}}`, kind, percent, reset.Format(time.RFC3339), active, name)
+	}
+	inactive := limit("Fable", "weekly_scoped", 10, false)
+	active := limit("fAbLe 5", "weekly_scoped", 85, true)
+	for _, tt := range []struct {
+		name, payload string
+		want          float64
+	}{
+		{"active last", inactive + "," + active, .85},
+		{"active first", active + "," + inactive, .85},
+		{"inactive fallback", inactive, .1},
+		{"unrelated ignored", limit("Sonnet", "weekly_scoped", 100, true) + "," + limit("Fable", "daily_scoped", 100, true) + "," + active, .85},
+		{"invalid percent ignored", limit("Fable", "weekly_scoped", 101, true) + "," + inactive, .1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			headers, err := decode("claude", strings.NewReader(`{"five_hour":{"utilization":25,"resets_at":`+fmt.Sprintf("%q", reset.Format(time.RFC3339))+`},"limits":[`+tt.payload+`],"extra_usage":{"is_enabled":false}}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := &auth.Auth{Provider: "claude"}
+			a.Quota.ObserveResponseHeadersForProvider("claude", headers, time.Now())
+			var found bool
+			for _, w := range auth.QuotaWindows(a, "claude-fable-5") {
+				if w.Name == "7d_fable" {
+					found = true
+					if !w.Known || w.UsedFraction != tt.want || !w.ResetAt.Equal(reset) {
+						t.Fatalf("fable window=%+v", w)
+					}
+				}
+				if w.Name == "5h" && (!w.Known || w.UsedFraction != .25) {
+					t.Fatalf("legacy window=%+v", w)
+				}
+			}
+			if !found {
+				t.Fatal("Fable window missing")
+			}
+		})
 	}
 }
