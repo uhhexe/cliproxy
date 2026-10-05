@@ -102,6 +102,9 @@ type Config struct {
 	// QuotaExceeded defines the behavior when a quota is exceeded.
 	QuotaExceeded QuotaExceeded `yaml:"quota-exceeded" json:"quota-exceeded"`
 
+	// QuotaProbe enables usage polling independently of the routing strategy.
+	QuotaProbe QuotaProbeConfig `yaml:"quota-probe" json:"quota-probe"`
+
 	// Routing controls credential selection behavior.
 	Routing RoutingConfig `yaml:"routing" json:"routing"`
 

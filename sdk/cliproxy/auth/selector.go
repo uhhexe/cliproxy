@@ -1908,3 +1908,69 @@ func extractResponsesAPIContent(content gjson.Result) string {
 func extractSessionID(payload []byte) string {
 	return ExtractSessionID(nil, payload, nil)
 }
+
+// ResetSoonestSelector consumes quota before the most-used window resets.
+// Unknown observations retain round-robin behavior; exhausted accounts are skipped.
+type ResetSoonestSelector struct {
+	RoundRobinSelector
+}
+
+func (s *ResetSoonestSelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*Auth) (*Auth, error) {
+	now := time.Now()
+	available, err := getSelectorAvailableAuths(ctx, auths, provider, model, now)
+	if err != nil {
+		return nil, err
+	}
+	remaining := make([]*Auth, 0, len(available))
+	bindings := make(map[string]QuotaWindow, len(available))
+	var earliestRecovery time.Time
+	for _, a := range available {
+		var binding QuotaWindow
+		var recovery time.Time
+		for _, w := range quotaWindowsAt(a, model, now) {
+			if !w.Known {
+				continue
+			}
+			if w.Exhausted && w.ResetAt.After(recovery) {
+				recovery = w.ResetAt
+			}
+			if !binding.Known || w.UsedFraction > binding.UsedFraction || (w.UsedFraction == binding.UsedFraction && w.ResetAt.Before(binding.ResetAt)) {
+				binding = w
+			}
+		}
+		if !recovery.IsZero() {
+			if earliestRecovery.IsZero() || recovery.Before(earliestRecovery) {
+				earliestRecovery = recovery
+			}
+			continue
+		}
+		remaining = append(remaining, a)
+		if binding.Known {
+			bindings[a.ID] = binding
+		}
+	}
+	if len(remaining) == 0 {
+		if !earliestRecovery.IsZero() {
+			if provider == "mixed" {
+				provider = ""
+			}
+			return nil, newModelCooldownError(model, provider, earliestRecovery.Sub(now))
+		}
+		return nil, newAuthUnavailableError(time.Time{}, now)
+	}
+	remaining = preferCodexWebsocketAuths(ctx, provider, remaining)
+	var best *Auth
+	for _, a := range remaining {
+		w, known := bindings[a.ID]
+		if !known {
+			continue
+		}
+		if best == nil || w.ResetAt.Before(bindings[best.ID].ResetAt) || (w.ResetAt.Equal(bindings[best.ID].ResetAt) && a.ID < best.ID) {
+			best = a
+		}
+	}
+	if best != nil {
+		return best, nil
+	}
+	return s.RoundRobinSelector.Pick(ctx, provider, model, opts, remaining)
+}

@@ -126,7 +126,7 @@ Proxy (`uhhexe/cliproxy`):
   - Tier: build
 
 ## Stage 2 — reset-soonest routing (repo: uhhexe/cliproxy)
-- [ ] 2.1 Quota view over recorded signals
+- [x] 2.1 Quota view over recorded signals
   - Where: new `sdk/cliproxy/auth/quota_view.go` + `_test.go`: `QuotaWindows(auth, model)
     []QuotaWindow{Name, UsedFraction, ResetAt, Exhausted, Known}`. Claude from
     `Anthropic-Ratelimit-Unified-{5h,7d,7d_oi}-{Utilization,Reset,Status}`; Codex from
@@ -137,7 +137,7 @@ Proxy (`uhhexe/cliproxy`):
     providers, stale data, and a passed reset.
   - Fence: read-only over existing structs; no change to `quota_signals.go` recording.
   - Tier: build
-- [ ] 2.2 Background quota prober (so routing knows before first use)
+- [x] 2.2 Background quota prober (so routing knows before first use)
   - Where: new `sdk/cliproxy/quotaprobe/` service started from the service builder when
     `routing.strategy == reset-soonest` (or `quota-probe.enabled: true`): every 10 min ± 60 s
     jitter per Claude/Codex credential, call the same usage endpoints the dashboard uses
@@ -153,6 +153,7 @@ Proxy (`uhhexe/cliproxy`):
     is not reset-soonest and the flag is off; no new external dependency.
   - Tier: build
 - [ ] 2.3 `ResetSoonestSelector` + registration
+  - Go half complete: selector, strategy registration, tests and server build pass. Dashboard half remains with the dashboard lane.
   - Where: `selector.go` (new type; start from `getSelectorAvailableAuths`, drop
     `Exhausted` creds, sort known ones by the soonest `ResetAt` among windows with quota left —
     use the binding window: the one with the highest `UsedFraction`; ties by ID; unknown creds
