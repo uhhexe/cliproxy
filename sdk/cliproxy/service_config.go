@@ -42,13 +42,11 @@ func normalizedRoutingRuntimeState(cfg *config.Config) routingRuntimeState {
 		return state
 	}
 
-	switch strings.ToLower(strings.TrimSpace(cfg.Routing.Strategy)) {
-	case "weighted-round-robin", "weightedroundrobin", "wrr":
-		state.strategy = "weighted-round-robin"
-	case "reset-soonest":
-		state.strategy = "reset-soonest"
-	case "fill-first", "fillfirst", "ff":
-		state.strategy = "fill-first"
+	if strategy, ok := normalizeRuntimeStrategy(cfg.Routing.Strategy); ok {
+		state.strategy = strategy
+	}
+	if override, ok := normalizeRuntimeStrategy(cfg.Routing.StrategyOverride); ok {
+		state.strategy = override
 	}
 	state.sessionAffinity = cfg.Routing.SessionAffinity
 	if ttl := strings.TrimSpace(cfg.Routing.SessionAffinityTTL); ttl != "" {
@@ -63,6 +61,23 @@ func normalizedRoutingRuntimeState(cfg *config.Config) routingRuntimeState {
 		state.sessionAffinitySubagents = *cfg.Routing.SessionAffinitySubagents
 	}
 	return state
+}
+
+// normalizeRuntimeStrategy deliberately rejects empty values so an empty override
+// cannot replace the configured strategy with the default.
+func normalizeRuntimeStrategy(value string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "round-robin", "roundrobin", "rr":
+		return "round-robin", true
+	case "weighted-round-robin", "weightedroundrobin", "wrr":
+		return "weighted-round-robin", true
+	case "fill-first", "fillfirst", "ff":
+		return "fill-first", true
+	case "reset-soonest":
+		return "reset-soonest", true
+	default:
+		return "", false
+	}
 }
 
 func newRoutingSelector(state routingRuntimeState) coreauth.Selector {

@@ -85,3 +85,34 @@ func TestResetSoonestRoutingSelector(t *testing.T) {
 		t.Fatalf("selector = %T", newRoutingSelector(state))
 	}
 }
+
+func TestRoutingStrategyOverride(t *testing.T) {
+	for _, tt := range []struct {
+		strategy, override, want string
+		probe                    bool
+	}{
+		{"round-robin", "reset-soonest", "reset-soonest", true},
+		{"fill-first", "", "fill-first", false},
+		{"reset-soonest", "", "reset-soonest", true},
+		{"round-robin", "unknown", "round-robin", false},
+		{"reset-soonest", "unknown", "reset-soonest", true},
+		{"reset-soonest", " RR ", "round-robin", false},
+		{"round-robin", "wrr", "weighted-round-robin", false},
+	} {
+		t.Run(tt.strategy+"/"+tt.override, func(t *testing.T) {
+			cfg := &internalconfig.Config{Routing: internalconfig.RoutingConfig{Strategy: tt.strategy, StrategyOverride: tt.override}}
+			state := normalizedRoutingRuntimeState(cfg)
+			if state.strategy != tt.want {
+				t.Fatalf("strategy=%q, want %q", state.strategy, tt.want)
+			}
+			_, reset := newRoutingSelector(state).(*coreauth.ResetSoonestSelector)
+			if reset != (tt.want == "reset-soonest") {
+				t.Fatalf("selector=%T", newRoutingSelector(state))
+			}
+			s := &Service{cfg: cfg}
+			if s.quotaProbeEnabled() != tt.probe {
+				t.Fatalf("probe=%v, want %v", s.quotaProbeEnabled(), tt.probe)
+			}
+		})
+	}
+}
