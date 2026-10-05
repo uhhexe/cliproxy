@@ -38,6 +38,8 @@ func quotaWindowsAt(auth *Auth, model string, now time.Time) []QuotaWindow {
 		names = []string{"primary", "secondary"}
 	} else if !strings.EqualFold(auth.Provider, "claude") {
 		return nil
+	} else if strings.Contains(strings.ToLower(model), "fable") {
+		names = append(names, "7d_fable")
 	}
 	for _, name := range names {
 		w := QuotaWindow{Name: name}

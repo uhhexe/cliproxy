@@ -48,3 +48,30 @@ func TestQuotaView(t *testing.T) {
 		}
 	})
 }
+
+func TestQuotaViewFableModelScope(t *testing.T) {
+	a := &Auth{Provider: "claude"}
+	h := http.Header{}
+	h.Set("Anthropic-Ratelimit-Unified-7d_fable-Utilization", "1")
+	h.Set("Anthropic-Ratelimit-Unified-7d_fable-Reset", strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10))
+	a.Quota.ObserveResponseHeadersForProvider("claude", h, time.Now())
+	for _, tt := range []struct {
+		model string
+		want  bool
+	}{{"claude-fable-5", true}, {"CLAUDE-FABLE-5", true}, {"claude-sonnet-5", false}, {"", false}} {
+		t.Run(tt.model, func(t *testing.T) {
+			found := false
+			for _, w := range QuotaWindows(a, tt.model) {
+				if w.Name == "7d_fable" {
+					found = true
+					if !w.Known || !w.Exhausted {
+						t.Fatalf("window=%+v", w)
+					}
+				}
+			}
+			if found != tt.want {
+				t.Fatalf("Fable window present=%v, want %v", found, tt.want)
+			}
+		})
+	}
+}

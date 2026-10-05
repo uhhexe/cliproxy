@@ -144,15 +144,30 @@ func (s *Service) probe(ctx context.Context, a *auth.Auth) time.Duration {
 func decode(provider string, body io.Reader) (http.Header, error) {
 	h := http.Header{}
 	if provider == "claude" {
-		var payload map[string]*struct {
+		type claudeWindow struct {
 			Utilization *float64 `json:"utilization"`
 			ResetsAt    string   `json:"resets_at"`
+		}
+		var payload struct {
+			FiveHour     *claudeWindow `json:"five_hour"`
+			SevenDay     *claudeWindow `json:"seven_day"`
+			SevenDayOpus *claudeWindow `json:"seven_day_opus"`
+			Limits       []struct {
+				Kind     string   `json:"kind"`
+				Percent  *float64 `json:"percent"`
+				ResetsAt string   `json:"resets_at"`
+				IsActive bool     `json:"is_active"`
+				Scope    struct {
+					Model struct {
+						DisplayName string `json:"display_name"`
+					} `json:"model"`
+				} `json:"scope"`
+			} `json:"limits"`
 		}
 		if err := json.NewDecoder(body).Decode(&payload); err != nil {
 			return nil, err
 		}
-		for _, pair := range [][2]string{{"five_hour", "5h"}, {"seven_day", "7d"}, {"seven_day_opus", "7d_oi"}} {
-			w := payload[pair[0]]
+		for name, w := range map[string]*claudeWindow{"5h": payload.FiveHour, "7d": payload.SevenDay, "7d_oi": payload.SevenDayOpus} {
 			if w == nil || w.Utilization == nil {
 				continue
 			}
@@ -160,9 +175,23 @@ func decode(provider string, body io.Reader) (http.Header, error) {
 			if err != nil {
 				continue
 			}
-			p := "Anthropic-Ratelimit-Unified-" + pair[1] + "-"
+			p := "Anthropic-Ratelimit-Unified-" + name + "-"
 			h.Set(p+"Utilization", strconv.FormatFloat(*w.Utilization/100, 'f', -1, 64))
 			h.Set(p+"Reset", strconv.FormatInt(reset.Unix(), 10))
+		}
+		found, active := false, false
+		for _, limit := range payload.Limits {
+			name := strings.TrimSpace(limit.Scope.Model.DisplayName)
+			if limit.Kind != "weekly_scoped" || (!strings.EqualFold(name, "Fable") && !strings.EqualFold(name, "Fable 5")) || limit.Percent == nil || *limit.Percent < 0 || *limit.Percent > 100 {
+				continue
+			}
+			reset, err := time.Parse(time.RFC3339Nano, limit.ResetsAt)
+			if err != nil || (found && (active || !limit.IsActive)) {
+				continue
+			}
+			found, active = true, limit.IsActive
+			h.Set("Anthropic-Ratelimit-Unified-7d_fable-Utilization", strconv.FormatFloat(*limit.Percent/100, 'f', -1, 64))
+			h.Set("Anthropic-Ratelimit-Unified-7d_fable-Reset", strconv.FormatInt(reset.Unix(), 10))
 		}
 	} else {
 		type window struct {

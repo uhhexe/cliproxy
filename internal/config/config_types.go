@@ -354,6 +354,9 @@ type RoutingConfig struct {
 	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first", "reset-soonest".
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 
+	// StrategyOverride wins when it names a known strategy; empty or unknown values are ignored.
+	StrategyOverride string `yaml:"strategy-override,omitempty" json:"strategy-override,omitempty"`
+
 	// SessionAffinity enables universal session-sticky routing for all clients.
 	// Explicit Claude Code, Codex, OpenCode, and pi session headers are preferred,
 	// followed by prompt_cache_key, Responses conversation IDs, legacy body IDs,

@@ -17,3 +17,23 @@ func TestQuotaProbeConfig(t *testing.T) {
 		t.Fatal("quota probing should default off")
 	}
 }
+
+func TestRoutingStrategyOverrideConfig(t *testing.T) {
+	for _, prefix := range []string{"", "config-version: 8\n"} {
+		raw := []byte(prefix + "routing: {strategy: round-robin, strategy-override: reset-soonest}\n")
+		if err := ValidateV8Config(raw); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := ParseConfigBytes(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Routing.Strategy != "round-robin" || cfg.Routing.StrategyOverride != "reset-soonest" {
+			t.Fatalf("routing=%+v", cfg.Routing)
+		}
+	}
+	cfg, err := ParseConfigBytes([]byte("routing: {strategy: fill-first}\n"))
+	if err != nil || cfg.Routing.StrategyOverride != "" {
+		t.Fatal("override should default empty")
+	}
+}
